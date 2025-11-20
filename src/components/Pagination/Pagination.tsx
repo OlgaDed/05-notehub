@@ -2,42 +2,42 @@ import ReactPaginate from 'react-paginate';
 import css from './Pagination.module.css';
 
 interface PaginationProps {
-  totalPages: number;
   currentPage: number;
+  totalPages: number;
   onPageChange: (page: number) => void;
 }
 
-const Pagination = ({
-  totalPages,
+export default function Pagination({
   currentPage,
+  totalPages,
   onPageChange,
-}: PaginationProps) => {
-  const handlePageClick = (event: { selected: number }) => {
-    onPageChange(event.selected + 1); // react-paginate використовує 0-based індекс
+}: PaginationProps) {
+  if (totalPages <= 1) return null;
+
+  const handlePageChange = (selectedItem: { selected: number }) => {
+    // ReactPaginate рахує з 0, бекенд і наш стейт — з 1
+    onPageChange(selectedItem.selected + 1);
   };
 
   return (
     <ReactPaginate
       breakLabel="..."
-      nextLabel="Next >"
-      onPageChange={handlePageClick}
-      pageRangeDisplayed={5}
+      nextLabel=">"
+      previousLabel="<"
       pageCount={totalPages}
-      previousLabel="< Previous"
-      forcePage={currentPage - 1} // react-paginate використовує 0-based індекс
+      forcePage={currentPage - 1}
+      onPageChange={handlePageChange}
       containerClassName={css.pagination}
-      pageClassName={css.pageItem}
+      pageClassName={css.page}
       pageLinkClassName={css.pageLink}
-      previousClassName={css.pageItem}
+      previousClassName={css.page}
       previousLinkClassName={css.pageLink}
-      nextClassName={css.pageItem}
+      nextClassName={css.page}
       nextLinkClassName={css.pageLink}
+      breakClassName={css.page}
+      breakLinkClassName={css.pageLink}
       activeClassName={css.active}
       disabledClassName={css.disabled}
-      breakClassName={css.pageItem}
-      breakLinkClassName={css.pageLink}
     />
   );
-};
-
-export default Pagination;
+}
