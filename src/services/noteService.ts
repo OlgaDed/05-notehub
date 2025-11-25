@@ -1,5 +1,4 @@
 import axios from 'axios';
-import type { AxiosResponse } from 'axios';
 import type { Note, NoteTag } from '../types/note';
 
 const API_BASE_URL = 'https://notehub-public.goit.study/api';
@@ -8,20 +7,26 @@ const TOKEN = import.meta.env.VITE_NOTEHUB_TOKEN;
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
   headers: {
-    Authorization: `Bearer ${TOKEN}`,
+    'Content-Type': 'application/json',
+    ...(TOKEN ? { Authorization: `Bearer ${TOKEN}` } : {}),
   },
 });
 
-// Інтерфейси для відповідей API
 export interface FetchNotesResponse {
-  data: Note[];
-  total: number;
+  notes: Note[];
   page: number;
   perPage: number;
+  totalItems: number;
   totalPages: number;
 }
 
-export interface CreateNoteData {
+export interface FetchNotesParams {
+  page?: number;
+  perPage?: number;
+  search?: string;
+}
+
+export interface CreateNotePayload {
   title: string;
   content: string;
   tag: NoteTag;
@@ -32,34 +37,60 @@ export interface DeleteNoteResponse {
   message: string;
 }
 
-export interface FetchNotesParams {
-  page?: number;
-  perPage?: number;
-  search?: string;
-}
-
 export const fetchNotes = async (
   params: FetchNotesParams = {}
-): Promise<AxiosResponse<FetchNotesResponse>> => {
+): Promise<FetchNotesResponse> => {
   const { page = 1, perPage = 12, search = '' } = params;
 
-  return axiosInstance.get<FetchNotesResponse>('/notes', {
+  const response = await axiosInstance.get('/notes', {
     params: {
       page,
       perPage,
       ...(search && { search }),
     },
   });
+
+  const raw: any = response.data;
+  console.log('RAW /notes response:', raw);
+
+  let notes: Note[] = [];
+
+  if (Array.isArray(raw.notes)) {
+    notes = raw.notes;
+  } else if (Array.isArray(raw.data)) {
+    notes = raw.data;
+  } else if (raw.data?.items && Array.isArray(raw.data.items)) {
+    notes = raw.data.items;
+  } else if (Array.isArray(raw.items)) {
+    notes = raw.items;
+  } else {
+    notes = [];
+  }
+
+  const meta = raw.meta ?? raw;
+
+  return {
+    notes,
+    page: meta.page ?? page,
+    perPage: meta.perPage ?? perPage,
+    totalItems:
+      meta.totalItems ??
+      meta.total ??
+      (Array.isArray(notes) ? notes.length : 0),
+    totalPages: meta.totalPages ?? 1,
+  };
 };
 
 export const createNote = async (
-  noteData: CreateNoteData
-): Promise<AxiosResponse<Note>> => {
-  return axiosInstance.post<Note>('/notes', noteData);
+  noteData: CreateNotePayload
+): Promise<Note> => {
+  const { data } = await axiosInstance.post<Note>('/notes', noteData);
+  return data;
 };
 
-export const deleteNote = async (
-  id: string
-): Promise<AxiosResponse<DeleteNoteResponse>> => {
-  return axiosInstance.delete<DeleteNoteResponse>(`/notes/${id}`);
+export const deleteNote = async (id: string): Promise<DeleteNoteResponse> => {
+  const { data } = await axiosInstance.delete<DeleteNoteResponse>(
+    `/notes/${id}`
+  );
+  return data;
 };

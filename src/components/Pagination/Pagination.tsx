@@ -15,7 +15,6 @@ export default function Pagination({
   if (totalPages <= 1) return null;
 
   const handlePageChange = (selectedItem: { selected: number }) => {
-    // ReactPaginate рахує з 0, бекенд і наш стейт — з 1
     onPageChange(selectedItem.selected + 1);
   };
 
