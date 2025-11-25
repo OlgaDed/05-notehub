@@ -1,19 +1,36 @@
-import axios, { type AxiosResponse } from 'axios';
+import axios from 'axios';
+import type { AxiosResponse } from 'axios';
 import type { Note, NoteTag } from '../types/note';
 
-const token = import.meta.env.VITE_NOTEHUB_TOKEN;
+const API_BASE_URL = 'https://notehub-public.goit.study/api';
+const TOKEN = import.meta.env.VITE_NOTEHUB_TOKEN;
 
-if (!token) {
-  console.warn('VITE_NOTEHUB_TOKEN is missing. Check your .env file.');
-}
-
-export const apiClient = axios.create({
-  baseURL: 'https://notehub-public.goit.study/api',
+const axiosInstance = axios.create({
+  baseURL: API_BASE_URL,
   headers: {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    Authorization: `Bearer ${TOKEN}`,
   },
 });
+
+// Інтерфейси для відповідей API
+export interface FetchNotesResponse {
+  data: Note[];
+  total: number;
+  page: number;
+  perPage: number;
+  totalPages: number;
+}
+
+export interface CreateNoteData {
+  title: string;
+  content: string;
+  tag: NoteTag;
+}
+
+export interface DeleteNoteResponse {
+  id: string;
+  message: string;
+}
 
 export interface FetchNotesParams {
   page?: number;
@@ -21,75 +38,28 @@ export interface FetchNotesParams {
   search?: string;
 }
 
-interface FetchNotesResponseApiBase {
-  page: number;
-  perPage: number;
-  totalItems: number;
-  totalPages: number;
-}
-
-interface FetchNotesResponseApiWithData extends FetchNotesResponseApiBase {
-  data: Note[];
-}
-
-interface FetchNotesResponseApiWithItems extends FetchNotesResponseApiBase {
-  items: Note[];
-}
-
-export type FetchNotesResponseApi =
-  | FetchNotesResponseApiWithData
-  | FetchNotesResponseApiWithItems;
-
-export interface FetchNotesResponse {
-  notes: Note[];
-  page: number;
-  perPage: number;
-  totalItems: number;
-  totalPages: number;
-}
-
-export interface CreateNotePayload {
-  title: string;
-  content: string;
-  tag: NoteTag;
-}
-
 export const fetchNotes = async (
   params: FetchNotesParams = {}
-): Promise<FetchNotesResponse> => {
+): Promise<AxiosResponse<FetchNotesResponse>> => {
   const { page = 1, perPage = 12, search = '' } = params;
 
-  const response: AxiosResponse<FetchNotesResponseApi> = await apiClient.get(
-    '/notes',
-    {
-      params: {
-        page,
-        perPage,
-        ...(search ? { search } : {}),
-      },
-    }
-  );
-
-  const apiData = response.data;
-
-  const notes =
-    'data' in apiData ? apiData.data : 'items' in apiData ? apiData.items : [];
-
-  return {
-    notes,
-    page: apiData.page,
-    perPage: apiData.perPage,
-    totalItems: apiData.totalItems,
-    totalPages: apiData.totalPages,
-  };
+  return axiosInstance.get<FetchNotesResponse>('/notes', {
+    params: {
+      page,
+      perPage,
+      ...(search && { search }),
+    },
+  });
 };
 
-export const createNote = async (payload: CreateNotePayload): Promise<Note> => {
-  const response: AxiosResponse<Note> = await apiClient.post('/notes', payload);
-  return response.data;
+export const createNote = async (
+  noteData: CreateNoteData
+): Promise<AxiosResponse<Note>> => {
+  return axiosInstance.post<Note>('/notes', noteData);
 };
 
-export const deleteNote = async (id: string): Promise<Note> => {
-  const response: AxiosResponse<Note> = await apiClient.delete(`/notes/${id}`);
-  return response.data;
+export const deleteNote = async (
+  id: string
+): Promise<AxiosResponse<DeleteNoteResponse>> => {
+  return axiosInstance.delete<DeleteNoteResponse>(`/notes/${id}`);
 };

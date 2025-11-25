@@ -1,131 +1,105 @@
-import { Formik, Form, Field } from 'formik';
+import { Formik, Form, Field, ErrorMessage } from 'formik';
 import * as Yup from 'yup';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-
-import { createNote, type CreateNotePayload } from '../../services/noteService';
-import type { NoteTag } from '../../types/note';
-
 import css from './NoteForm.module.css';
 
-interface NoteFormProps {
-  onClose: () => void;
+type NoteTag = 'Todo' | 'Work' | 'Personal' | 'Meeting' | 'Shopping';
+
+interface CreateNoteData {
+  title: string;
+  content: string;
+  tag: NoteTag;
 }
 
-const validationSchema = Yup.object().shape({
+interface NoteFormProps {
+  onSubmit: (values: CreateNoteData) => void;
+  onCancel: () => void;
+}
+
+const NoteSchema = Yup.object().shape({
   title: Yup.string()
     .min(3, 'Title must be at least 3 characters')
     .max(50, 'Title must be at most 50 characters')
     .required('Title is required'),
   content: Yup.string().max(500, 'Content must be at most 500 characters'),
-  tag: Yup.mixed<NoteTag>()
+  tag: Yup.string()
     .oneOf(['Todo', 'Work', 'Personal', 'Meeting', 'Shopping'], 'Invalid tag')
     .required('Tag is required'),
 });
 
-const initialValues: CreateNotePayload = {
-  title: '',
-  content: '',
-  tag: 'Todo',
-};
-
-export default function NoteForm({ onClose }: NoteFormProps) {
-  const queryClient = useQueryClient();
-
-  const createMutation = useMutation({
-    mutationFn: (values: CreateNotePayload) => createNote(values),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notes'] });
-      onClose();
-    },
-  });
-
-  const handleSubmit = async (
-    values: CreateNotePayload,
-    {
-      setSubmitting,
-      resetForm,
-    }: {
-      setSubmitting: (isSubmitting: boolean) => void;
-      resetForm: () => void;
-    }
-  ) => {
-    try {
-      await createMutation.mutateAsync(values);
-      resetForm();
-    } finally {
-      setSubmitting(false);
-    }
+const NoteForm = ({ onSubmit, onCancel }: NoteFormProps) => {
+  const initialValues: CreateNoteData = {
+    title: '',
+    content: '',
+    tag: 'Todo',
   };
 
   return (
     <Formik
       initialValues={initialValues}
-      validationSchema={validationSchema}
-      onSubmit={handleSubmit}
+      validationSchema={NoteSchema}
+      onSubmit={(values, { setSubmitting }) => {
+        onSubmit(values);
+        setSubmitting(false);
+      }}
     >
-      {({ errors, touched, isSubmitting, isValid, dirty }) => (
+      {({ isSubmitting }) => (
         <Form className={css.form}>
           <div className={css.formGroup}>
             <label htmlFor="title">Title</label>
             <Field id="title" type="text" name="title" className={css.input} />
-            {touched.title && errors.title && (
-              <span name="title" className={css.error}>
-                {errors.title}
-              </span>
-            )}
+            <ErrorMessage name="title">
+              {msg => <span className={css.error}>{msg}</span>}
+            </ErrorMessage>
           </div>
 
           <div className={css.formGroup}>
             <label htmlFor="content">Content</label>
             <Field
-              as="textarea"
               id="content"
               name="content"
+              as="textarea"
               rows={8}
               className={css.textarea}
             />
-            {touched.content && errors.content && (
-              <span name="content" className={css.error}>
-                {errors.content}
-              </span>
-            )}
+            <ErrorMessage name="content">
+              {msg => <span className={css.error}>{msg}</span>}
+            </ErrorMessage>
           </div>
 
           <div className={css.formGroup}>
             <label htmlFor="tag">Tag</label>
-            <Field as="select" id="tag" name="tag" className={css.select}>
+            <Field id="tag" name="tag" as="select" className={css.select}>
               <option value="Todo">Todo</option>
               <option value="Work">Work</option>
               <option value="Personal">Personal</option>
               <option value="Meeting">Meeting</option>
               <option value="Shopping">Shopping</option>
             </Field>
-            {touched.tag && errors.tag && (
-              <span name="tag" className={css.error}>
-                {errors.tag}
-              </span>
-            )}
+            <ErrorMessage name="tag">
+              {msg => <span className={css.error}>{msg}</span>}
+            </ErrorMessage>
           </div>
 
           <div className={css.actions}>
             <button
               type="button"
               className={css.cancelButton}
-              onClick={onClose}
+              onClick={onCancel}
             >
               Cancel
             </button>
-
             <button
               type="submit"
               className={css.submitButton}
-              disabled={isSubmitting || !isValid || !dirty}
+              disabled={isSubmitting}
             >
-              {isSubmitting ? 'Creating...' : 'Create note'}
+              Create note
             </button>
           </div>
         </Form>
       )}
     </Formik>
   );
-}
+};
+
+export default NoteForm;
