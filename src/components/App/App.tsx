@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  useQuery,
+  keepPreviousData,
+} from '@tanstack/react-query';
 import { useDebounce } from 'use-debounce';
 
 import {
   fetchNotes,
-  deleteNote,
   type FetchNotesResponse,
 } from '../../services/noteService';
 
@@ -23,8 +25,6 @@ export default function App() {
 
   const [debouncedSearch] = useDebounce(search, 500);
 
-  const queryClient = useQueryClient();
-
   const { data, isLoading, isError } = useQuery<FetchNotesResponse>({
     queryKey: ['notes', page, debouncedSearch],
     queryFn: () =>
@@ -33,21 +33,11 @@ export default function App() {
         perPage: 12,
         search: debouncedSearch,
       }),
+    placeholderData: keepPreviousData,
   });
 
   const notes = data?.notes ?? [];
   const totalPages = data?.totalPages ?? 1;
-
-  const deleteMutation = useMutation({
-    mutationFn: deleteNote,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notes'] });
-    },
-  });
-
-  const handleDeleteNote = (id: string) => {
-    deleteMutation.mutate(id);
-  };
 
   return (
     <div className={css.app}>
@@ -76,9 +66,7 @@ export default function App() {
         <p className={css.message}>Error loading notes. Please try again.</p>
       )}
 
-      {notes.length > 0 && (
-        <NoteList notes={notes} onDelete={handleDeleteNote} />
-      )}
+      {notes.length > 0 && <NoteList notes={notes} />}
 
       {notes.length === 0 && !isLoading && !isError && (
         <p className={css.message}>No notes found. Create your first note!</p>

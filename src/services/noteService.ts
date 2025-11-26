@@ -12,11 +12,9 @@ const axiosInstance = axios.create({
   },
 });
 
+
 export interface FetchNotesResponse {
   notes: Note[];
-  page: number;
-  perPage: number;
-  totalItems: number;
   totalPages: number;
 }
 
@@ -32,17 +30,12 @@ export interface CreateNotePayload {
   tag: NoteTag;
 }
 
-export interface DeleteNoteResponse {
-  id: string;
-  message: string;
-}
-
 export const fetchNotes = async (
-  params: FetchNotesParams = {}
+  params: FetchNotesParams = {},
 ): Promise<FetchNotesResponse> => {
   const { page = 1, perPage = 12, search = '' } = params;
 
-  const response = await axiosInstance.get('/notes', {
+  const { data } = await axiosInstance.get<FetchNotesResponse>('/notes', {
     params: {
       page,
       perPage,
@@ -50,47 +43,18 @@ export const fetchNotes = async (
     },
   });
 
-  const raw: any = response.data;
-  console.log('RAW /notes response:', raw);
-
-  let notes: Note[] = [];
-
-  if (Array.isArray(raw.notes)) {
-    notes = raw.notes;
-  } else if (Array.isArray(raw.data)) {
-    notes = raw.data;
-  } else if (raw.data?.items && Array.isArray(raw.data.items)) {
-    notes = raw.data.items;
-  } else if (Array.isArray(raw.items)) {
-    notes = raw.items;
-  } else {
-    notes = [];
-  }
-
-  const meta = raw.meta ?? raw;
-
-  return {
-    notes,
-    page: meta.page ?? page,
-    perPage: meta.perPage ?? perPage,
-    totalItems:
-      meta.totalItems ??
-      meta.total ??
-      (Array.isArray(notes) ? notes.length : 0),
-    totalPages: meta.totalPages ?? 1,
-  };
+  
+  return data;
 };
 
 export const createNote = async (
-  noteData: CreateNotePayload
+  noteData: CreateNotePayload,
 ): Promise<Note> => {
   const { data } = await axiosInstance.post<Note>('/notes', noteData);
   return data;
 };
 
-export const deleteNote = async (id: string): Promise<DeleteNoteResponse> => {
-  const { data } = await axiosInstance.delete<DeleteNoteResponse>(
-    `/notes/${id}`
-  );
+export const deleteNote = async (id: string): Promise<Note> => {
+  const { data } = await axiosInstance.delete<Note>(`/notes/${id}`);
   return data;
 };
